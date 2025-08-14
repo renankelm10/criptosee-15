@@ -6,6 +6,12 @@ RUN npm cache clean --force
 
 FROM base AS deps
 COPY package*.json ./
+
+# Adicione este comando para remover o lock file e node_modules se existirem
+# Isso força o npm a resolver as dependências do zero com as versões mais recentes.
+RUN rm -f package-lock.json && rm -rf node_modules
+
+# Instala as dependências
 RUN if [ -f package-lock.json ]; then \
       npm ci --omit=dev --no-audit --prefer-offline; \
     else \
