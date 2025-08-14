@@ -5,12 +5,13 @@ WORKDIR /app
 # Install dependencies
 FROM base AS deps
 COPY package*.json ./
-RUN npm ci --only=production --no-audit --prefer-offline
+# Use install if no lock file, otherwise use ci
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev --no-audit --prefer-offline; else npm install --omit=dev --no-audit; fi
 
 # Development dependencies
 FROM base AS deps-dev
 COPY package*.json ./
-RUN npm ci --no-audit --prefer-offline
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --prefer-offline; else npm install --no-audit; fi
 
 # Build stage
 FROM deps AS build
