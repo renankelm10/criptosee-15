@@ -5,23 +5,13 @@ WORKDIR /app
 # Install dependencies
 FROM base AS deps
 COPY package*.json ./
-# Se o package-lock.json existir, tenta npm ci; se falhar, apaga lock e roda npm install
-RUN if [ -f package-lock.json ]; then \
-      npm ci --omit=dev --no-audit --prefer-offline || \
-      (echo "Lock file inválido, regenerando..." && rm -f package-lock.json && npm install --omit=dev --no-audit); \
-    else \
-      npm install --omit=dev --no-audit; \
-    fi
+# Use install if no lock file, otherwise use ci
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev --no-audit --prefer-offline; else npm install --omit=dev --no-audit; fi
 
 # Development dependencies
 FROM base AS deps-dev
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then \
-      npm ci --no-audit --prefer-offline || \
-      (echo "Lock file inválido, regenerando..." && rm -f package-lock.json && npm install --no-audit); \
-    else \
-      npm install --no-audit; \
-    fi
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --prefer-offline; else npm install --no-audit; fi
 
 # Build stage
 FROM deps AS build
