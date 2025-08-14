@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Base de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: criptosee-postgres
+    environment:
+      POSTGRES_DB: criptosee
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/setup-database.sql:/docker-entrypoint-initdb.d/setup-database.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d criptosee"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - criptosee-network
+
+  # API Node.js
+  criptosee-api:
+    build: .
+    container_name: criptosee-api
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=criptosee
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - NODE_ENV=production
+      - PORT=3000
+      - FRONTEND_URL=${FRONTEND_URL}
+      - LOG_LEVEL=info
+      - DB_SSL=false
+      - DB_MAX_CONNECTIONS=20
+      - DB_IDLE_TIMEOUT=30000
+      - DB_CONNECTION_TIMEOUT=2000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - criptosee-network
+
+  # Nginx Reverse Proxy (opcional)
+  nginx:
+    image: nginx:alpine
+    container_name: criptosee-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - criptosee-api
+    restart: unless-stopped
+    networks:
+      - criptosee-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  criptosee-network:
+    driver: bridge
