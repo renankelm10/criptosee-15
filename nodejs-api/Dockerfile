@@ -1,6 +1,11 @@
 # Multi-stage build: install deps, build, run
+
 FROM node:18-alpine AS base
 WORKDIR /app
+
+# Atualizar npm para a versão mais recente recomendada e limpar cache
+RUN npm install -g npm@11.5.2
+RUN npm cache clean --force
 
 # Install dependencies
 FROM base AS deps
